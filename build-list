@@ -1,0 +1,73 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+exit(main());
+
+function main(): int
+{
+    error_reporting(E_ALL);
+
+    if (!file_exists(__DIR__ . '/language-list/README.md')) {
+        fwrite(STDERR, "Language list not found on disk, forgot to 'git submodule update --init'?\n");
+        return 1;
+    }
+
+    $langs = fetchLangs(__DIR__ . '/language-list/data');
+
+    if (!file_exists(__DIR__ . '/data')) {
+        mkdir(__DIR__ . '/data');
+    }
+    writeCSV($langs, __DIR__ . '/data/langs.csv');
+    writePHP($langs, __DIR__ . '/data/langs.php');
+    writeJSON($langs, __DIR__ . '/data/langs.json');
+
+    return 0;
+}
+
+function writeJSON(array $langs, string $path)
+{
+    file_put_contents($path, json_encode($langs, JSON_PRETTY_PRINT));
+}
+
+function writePHP(array $langs, string $path)
+{
+    $tpl = "<?php\n return ";
+    file_put_contents(
+        $path,
+        $tpl . var_export($langs, true) . ';'
+    );
+}
+
+function writeCSV(array $langs, string $path)
+{
+    $f = fopen($path, 'w+');
+
+    foreach ($langs as $k => $v) {
+        fprintf($f, "$k,$v\n");
+    }
+}
+
+function fetchLangs(string $dir): array
+{
+    // code => local lang name, ie. ['fr' => 'Français', 'ja' => '日本語']
+    $langs = [];
+
+    foreach (new DirectoryIterator($dir) as $langDir) {
+        if (!$langDir->isDir() || $langDir->isDot()) {
+            continue;
+        }
+        $lang = $langDir->getFilename();
+
+        $names = require $langDir->getPathname() . '/language.php';
+        if (!array_key_exists($lang, $names)) {
+            continue;
+        }
+
+        $langs[$lang] = $names[$lang];
+    }
+
+    ksort($langs);
+    return $langs;
+}
