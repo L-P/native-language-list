@@ -1,0 +1,3 @@
+[submodule "language-list"]
+	path = language-list
+	url = https://github.com/umpirsky/language-list.git
